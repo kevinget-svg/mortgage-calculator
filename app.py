@@ -36,6 +36,26 @@ def make_scenario_label(price: float, dp: int):
     return f"{price:.0f}万/{dp}%"
 
 
+def lighten(hex_color: str, factor: float = 0.4) -> str:
+    """将 hex 颜色与白色混合，返回更浅的颜色"""
+    hex_color = hex_color.lstrip('#')
+    r, g, b = int(hex_color[:2], 16), int(hex_color[2:4], 16), int(hex_color[4:], 16)
+    r = int(r + (255 - r) * factor)
+    g = int(g + (255 - g) * factor)
+    b = int(b + (255 - b) * factor)
+    return f'#{r:02x}{g:02x}{b:02x}'
+
+
+def darken(hex_color: str, factor: float = 0.4) -> str:
+    """将 hex 颜色与黑色混合，返回更深的颜色"""
+    hex_color = hex_color.lstrip('#')
+    r, g, b = int(hex_color[:2], 16), int(hex_color[2:4], 16), int(hex_color[4:], 16)
+    r = int(r * (1 - factor))
+    g = int(g * (1 - factor))
+    b = int(b * (1 - factor))
+    return f'#{r:02x}{g:02x}{b:02x}'
+
+
 def build_excel(df: pd.DataFrame, loan_type: str, years: int) -> bytes:
     """用 openpyxl 生成带格式的 Excel 文件，返回 bytes"""
     wb = Workbook()
@@ -229,14 +249,26 @@ with col_a:
     # 月供对比
     if loan_type == "组合贷款":
         fig1 = go.Figure()
-        fig1.add_bar(name="公积金月供", x=chart_df["场景"], y=chart_df["公积金月供(元)"],
-                     text=chart_df["公积金月供(元)"].apply(lambda x: f"{x:,.0f}"),
-                     textposition="inside", marker_color="#E8B88A")
-        fig1.add_bar(name="商贷月供", x=chart_df["场景"], y=chart_df["商贷月供(元)"],
-                     text=chart_df["商贷月供(元)"].apply(lambda x: f"{x:,.0f}"),
-                     textposition="inside", marker_color="#C5602D")
+        unique_dps = sorted(chart_df["首付比例"].unique().tolist(),
+                            key=lambda x: int(x.replace("%", "")))
+        bases = px.colors.qualitative.Set2[:len(unique_dps)]
+        for i, dp in enumerate(unique_dps):
+            base = bases[i % len(bases)]
+            sub = chart_df[chart_df["首付比例"] == dp]
+            fig1.add_bar(
+                name=f"公积金 {dp}", x=sub["场景"], y=sub["公积金月供(元)"],
+                text=sub["公积金月供(元)"].apply(lambda x: f"{x:,.0f}"),
+                textposition="inside", marker_color=lighten(base, 0.45),
+                legendgroup=dp,
+            )
+            fig1.add_bar(
+                name=f"商贷 {dp}", x=sub["场景"], y=sub["商贷月供(元)"],
+                text=sub["商贷月供(元)"].apply(lambda x: f"{x:,.0f}"),
+                textposition="inside", marker_color=darken(base, 0.35),
+                legendgroup=dp,
+            )
         fig1.update_layout(barmode="stack", title="月供构成对比（元）", height=400,
-                           legend=dict(orientation="h", y=1.15))
+                           legend=dict(orientation="h", y=1.15, traceorder="grouped"))
     else:
         y_col = "商贷月供(元)" if loan_type == "纯商业贷款" else "公积金月供(元)"
         name = "商贷月供" if loan_type == "纯商业贷款" else "公积金月供"
@@ -252,14 +284,26 @@ with col_b:
     # 总利息对比
     if loan_type == "组合贷款":
         fig2 = go.Figure()
-        fig2.add_bar(name="公积金利息", x=chart_df["场景"], y=chart_df["公积金总利息(万)"],
-                     text=chart_df["公积金总利息(万)"].apply(lambda x: f"{x:.1f}万"),
-                     textposition="inside", marker_color="#E8B88A")
-        fig2.add_bar(name="商贷利息", x=chart_df["场景"], y=chart_df["商贷总利息(万)"],
-                     text=chart_df["商贷总利息(万)"].apply(lambda x: f"{x:.1f}万"),
-                     textposition="inside", marker_color="#C5602D")
+        unique_dps = sorted(chart_df["首付比例"].unique().tolist(),
+                            key=lambda x: int(x.replace("%", "")))
+        bases = px.colors.qualitative.Set2[:len(unique_dps)]
+        for i, dp in enumerate(unique_dps):
+            base = bases[i % len(bases)]
+            sub = chart_df[chart_df["首付比例"] == dp]
+            fig2.add_bar(
+                name=f"公积金 {dp}", x=sub["场景"], y=sub["公积金总利息(万)"],
+                text=sub["公积金总利息(万)"].apply(lambda x: f"{x:.1f}万"),
+                textposition="inside", marker_color=lighten(base, 0.45),
+                legendgroup=dp,
+            )
+            fig2.add_bar(
+                name=f"商贷 {dp}", x=sub["场景"], y=sub["商贷总利息(万)"],
+                text=sub["商贷总利息(万)"].apply(lambda x: f"{x:.1f}万"),
+                textposition="inside", marker_color=darken(base, 0.35),
+                legendgroup=dp,
+            )
         fig2.update_layout(barmode="stack", title="总利息构成对比（万元）", height=400,
-                           legend=dict(orientation="h", y=1.15))
+                           legend=dict(orientation="h", y=1.15, traceorder="grouped"))
     else:
         y_col = "商贷总利息(万)" if loan_type == "纯商业贷款" else "公积金总利息(万)"
         name = "商贷总利息" if loan_type == "纯商业贷款" else "公积金总利息"
