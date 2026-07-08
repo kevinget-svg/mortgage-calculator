@@ -240,12 +240,12 @@ with col_a:
     else:
         y_col = "商贷月供(元)" if loan_type == "纯商业贷款" else "公积金月供(元)"
         name = "商贷月供" if loan_type == "纯商业贷款" else "公积金月供"
-        color = "#E8833A" if loan_type == "纯商业贷款" else "#4A90D9"
         fig1 = px.bar(chart_df, x="场景", y=y_col, title=f"{name}对比（元）",
                        text=chart_df[y_col].apply(lambda x: f"{x:,.0f}"),
-                       color_discrete_sequence=[color])
+                       color="首付比例",
+                       color_discrete_sequence=px.colors.qualitative.Set2)
         fig1.update_traces(textposition="outside")
-        fig1.update_layout(height=400, showlegend=False)
+        fig1.update_layout(height=400, legend=dict(orientation="h", y=1.15))
     st.plotly_chart(fig1, use_container_width=True)
 
 with col_b:
@@ -263,12 +263,12 @@ with col_b:
     else:
         y_col = "商贷总利息(万)" if loan_type == "纯商业贷款" else "公积金总利息(万)"
         name = "商贷总利息" if loan_type == "纯商业贷款" else "公积金总利息"
-        color = "#E8833A" if loan_type == "纯商业贷款" else "#4A90D9"
         fig2 = px.bar(chart_df, x="场景", y=y_col, title=f"{name}对比（万元）",
                        text=chart_df[y_col].apply(lambda x: f"{x:.1f}万"),
-                       color_discrete_sequence=[color])
+                       color="首付比例",
+                       color_discrete_sequence=px.colors.qualitative.Set2)
         fig2.update_traces(textposition="outside")
-        fig2.update_layout(height=400, showlegend=False)
+        fig2.update_layout(height=400, legend=dict(orientation="h", y=1.15))
     st.plotly_chart(fig2, use_container_width=True)
 
 # 月供趋势线（房子总价 vs 月供，按首付比例分组）
