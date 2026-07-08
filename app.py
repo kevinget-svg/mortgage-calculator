@@ -36,20 +36,30 @@ def make_scenario_label(price: float, dp: int):
     return f"{price:.0f}万/{dp}%"
 
 
-def lighten(hex_color: str, factor: float = 0.4) -> str:
-    """将 hex 颜色与白色混合，返回更浅的颜色"""
-    hex_color = hex_color.lstrip('#')
-    r, g, b = int(hex_color[:2], 16), int(hex_color[2:4], 16), int(hex_color[4:], 16)
+def _parse_rgb(color: str):
+    """将 '#hex' 或 'rgb(r,g,b)' 解析为 (r,g,b)"""
+    color = color.strip()
+    if color.startswith('#'):
+        color = color.lstrip('#')
+        return int(color[:2], 16), int(color[2:4], 16), int(color[4:], 16)
+    if color.startswith('rgb'):
+        vals = color.replace('rgb(', '').replace(')', '').split(',')
+        return int(vals[0]), int(vals[1]), int(vals[2])
+    raise ValueError(f"Unsupported color format: {color}")
+
+
+def lighten(color: str, factor: float = 0.4) -> str:
+    """与白色混合，返回更浅的 hex 颜色"""
+    r, g, b = _parse_rgb(color)
     r = int(r + (255 - r) * factor)
     g = int(g + (255 - g) * factor)
     b = int(b + (255 - b) * factor)
     return f'#{r:02x}{g:02x}{b:02x}'
 
 
-def darken(hex_color: str, factor: float = 0.4) -> str:
-    """将 hex 颜色与黑色混合，返回更深的颜色"""
-    hex_color = hex_color.lstrip('#')
-    r, g, b = int(hex_color[:2], 16), int(hex_color[2:4], 16), int(hex_color[4:], 16)
+def darken(color: str, factor: float = 0.4) -> str:
+    """与黑色混合，返回更深的 hex 颜色"""
+    r, g, b = _parse_rgb(color)
     r = int(r * (1 - factor))
     g = int(g * (1 - factor))
     b = int(b * (1 - factor))
