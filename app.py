@@ -158,7 +158,7 @@ for price_wan in selected_prices:
         if loan_type == "纯公积金贷款":
             gjj_loan = min(total_loan, max_gjj) if max_gjj > 0 else total_loan
             sd_loan = 0.0
-            gjj_note = "⚠超额" if (total_loan > max_gjj and max_gjj > 0) else ""
+            gjj_note = "⚠已达上限" if (total_loan > max_gjj and max_gjj > 0) else ""
         elif loan_type == "纯商业贷款":
             gjj_loan = 0.0
             sd_loan = total_loan
@@ -166,7 +166,7 @@ for price_wan in selected_prices:
         else:  # 组合贷
             gjj_loan = min(total_loan, max_gjj) if max_gjj > 0 else 0
             sd_loan = total_loan - gjj_loan
-            gjj_note = ""
+            gjj_note = "⚠已达上限" if (max_gjj > 0 and gjj_loan >= max_gjj) else ""
 
         gjj_m, gjj_interest, gjj_total = monthly_payment(gjj_loan, gjj_rate, years)
         sd_m, sd_interest, sd_total = monthly_payment(sd_loan, sd_rate, years)
@@ -176,7 +176,7 @@ for price_wan in selected_prices:
             "房屋总价(万)": price_wan,
             "首付比例": f"{dp_pct}%",
             "首付(万)": round(down_payment / 10000, 2),
-            "公积金贷款(万)": round(gjj_loan / 10000, 2) if gjj_loan > 0 else 0,
+            "公积金贷款(万)": f"{gjj_loan/10000:.2f}{gjj_note}" if gjj_loan > 0 else 0,
             "公积金月供(元)": round(gjj_m, 0) if gjj_loan > 0 else 0,
             "公积金总利息(万)": round(gjj_interest / 10000, 2) if gjj_loan > 0 else 0,
             "商贷(万)": round(sd_loan / 10000, 2) if sd_loan > 0 else 0,
@@ -231,10 +231,10 @@ with col_a:
         fig1 = go.Figure()
         fig1.add_bar(name="公积金月供", x=chart_df["场景"], y=chart_df["公积金月供(元)"],
                      text=chart_df["公积金月供(元)"].apply(lambda x: f"{x:,.0f}"),
-                     textposition="inside", marker_color="#4A90D9")
+                     textposition="inside", marker_color="#E8B88A")
         fig1.add_bar(name="商贷月供", x=chart_df["场景"], y=chart_df["商贷月供(元)"],
                      text=chart_df["商贷月供(元)"].apply(lambda x: f"{x:,.0f}"),
-                     textposition="inside", marker_color="#E8833A")
+                     textposition="inside", marker_color="#C5602D")
         fig1.update_layout(barmode="stack", title="月供构成对比（元）", height=400,
                            legend=dict(orientation="h", y=1.15))
     else:
@@ -254,10 +254,10 @@ with col_b:
         fig2 = go.Figure()
         fig2.add_bar(name="公积金利息", x=chart_df["场景"], y=chart_df["公积金总利息(万)"],
                      text=chart_df["公积金总利息(万)"].apply(lambda x: f"{x:.1f}万"),
-                     textposition="inside", marker_color="#4A90D9")
+                     textposition="inside", marker_color="#E8B88A")
         fig2.add_bar(name="商贷利息", x=chart_df["场景"], y=chart_df["商贷总利息(万)"],
                      text=chart_df["商贷总利息(万)"].apply(lambda x: f"{x:.1f}万"),
-                     textposition="inside", marker_color="#E8833A")
+                     textposition="inside", marker_color="#C5602D")
         fig2.update_layout(barmode="stack", title="总利息构成对比（万元）", height=400,
                            legend=dict(orientation="h", y=1.15))
     else:
