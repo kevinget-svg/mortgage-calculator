@@ -139,6 +139,21 @@ st.markdown(
     f"**最低首付** `{min_down_pay}%`"
 )
 
+# ── 自定义输入解析 ─────────────────────────────────────────────────────────
+def parse_custom_input(text: str):
+    """解析逗号/空格/换行分隔的数字字符串，返回 float 列表，忽略非法值"""
+    if not text or not text.strip():
+        return []
+    text = text.replace("\n", " ").replace(",", " ").replace("，", " ")
+    result = []
+    for part in text.split():
+        try:
+            result.append(float(part))
+        except ValueError:
+            pass
+    return result
+
+
 # ── 多选输入区 ─────────────────────────────────────────────────────────────
 st.subheader("📝 选择对比场景")
 col1, col2, col3 = st.columns(3)
@@ -150,6 +165,12 @@ with col1:
         default=[p for p in PRICE_DEFAULTS if p in PRICE_OPTIONS],
         help="可多选，同时对比不同总价",
     )
+    custom_prices_str = st.text_input(
+        "自定义总价（逗号/空格分隔）",
+        placeholder="例如：175 225 275",
+        help="输入自定义数值，会与上方多选合并",
+    )
+    custom_prices = parse_custom_input(custom_prices_str)
 
 with col2:
     dp_pcts = list(range(min_down_pay, 55, 5))
@@ -161,6 +182,12 @@ with col2:
         default=default_dp[:3],
         help="可多选，同时对比不同首付比例",
     )
+    custom_dps_str = st.text_input(
+        "自定义首付（逗号/空格分隔）",
+        placeholder="例如：18 22 28",
+        help="输入自定义数值（%），会与上方多选合并",
+    )
+    custom_dps = parse_custom_input(custom_dps_str)
 
 with col3:
     max_gjj_wan = 80.0
@@ -171,12 +198,18 @@ with col3:
             help="各地公积金中心规定的最高可贷额度",
         )
 
-if not selected_prices or not selected_dps:
-    st.info("👆 请在上述多选框中至少各选一项，即可查看计算结果。")
+# 合并自定义值与多选值
+all_prices = sorted(set(list(selected_prices) + custom_prices))
+all_dps = sorted(set(list(selected_dps) + custom_dps))
+
+if not all_prices or not all_dps:
+    st.info("👆 请至少选择一个房屋总价和首付比例（多选或自定义皆可）。")
     st.stop()
 
 # ── 计算所有组合 ───────────────────────────────────────────────────────────
 rows = []
+selected_prices = all_prices
+selected_dps = all_dps
 max_gjj = max_gjj_wan * 10000
 
 for price_wan in selected_prices:
