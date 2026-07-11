@@ -366,43 +366,52 @@ with tab1:
 with tab2:
     st.subheader("🔄 哪一套先买更划算？")
     st.caption(
-        "首套房商贷利率更低（3.0% vs 3.3%），将总价更高的房子作为首套购买通常更划算。"
-        "输入两套房产信息，用数据验证最优购买顺序。"
+        "分别设置两套房产的总价、贷款方式和首付比例。"
+        "切换购买顺序后，各套房的贷款方式/首付不变，仅商贷利率随首套/二套身份变化（3.0% vs 3.3%）。"
     )
 
-    c1, c2, c3, c4 = st.columns(4)
+    # ── 房产配置（左右并列） ─────────────────────────────────────────────
+    st.markdown("### 🏠 房产配置")
+    col_a, col_b = st.columns(2)
+
+    with col_a:
+        st.markdown("**房产 A**")
+        price_a = st.number_input("总价（万元）", 1.0, value=200.0, step=1.0, format="%.0f", key="t2_pa")
+        loan_a = st.selectbox("贷款方式", ["纯商业贷款", "纯公积金贷款", "组合贷款"], key="t2_loan_a")
+        a_uses_gjj = loan_a in ("纯公积金贷款", "组合贷款")
+        a_min_dp = 20 if a_uses_gjj else 15
+        dp_a = st.slider("首付比例（%）", a_min_dp, 70, a_min_dp, 1, key="t2_dp_a")
+
+    with col_b:
+        st.markdown("**房产 B**")
+        price_b = st.number_input("总价（万元）", 1.0, value=150.0, step=1.0, format="%.0f", key="t2_pb")
+        loan_b = st.selectbox("贷款方式", ["纯商业贷款", "纯公积金贷款", "组合贷款"], key="t2_loan_b")
+        b_uses_gjj = loan_b in ("纯公积金贷款", "组合贷款")
+        b_min_dp = 20 if b_uses_gjj else 15
+        dp_b = st.slider("首付比例（%）", b_min_dp, 70, b_min_dp, 1, key="t2_dp_b")
+
+    # ── 共用设置 ─────────────────────────────────────────────────────────
+    st.markdown("### ⚙️ 共用设置")
+    c1, c2 = st.columns(2)
     with c1:
-        price_a = st.number_input("房产A总价（万元）", 1.0, value=200.0, step=1.0, format="%.0f", key="t2_pa")
-    with c2:
-        price_b = st.number_input("房产B总价（万元）", 1.0, value=150.0, step=1.0, format="%.0f", key="t2_pb")
-    with c3:
-        t2_loan = st.selectbox("贷款方式", ["纯商业贷款", "纯公积金贷款", "组合贷款"], key="t2_loan")
-    with c4:
         t2_years = st.selectbox("贷款年限", YEAR_OPTIONS, index=5, key="t2_years")
-
-    t2_uses_gjj = t2_loan in ("纯公积金贷款", "组合贷款")
-    t2_min_dp = 20 if t2_uses_gjj else 15
-
-    c5, c6 = st.columns(2)
-    with c5:
-        t2_dp = st.slider("首付比例（%）", t2_min_dp, 70, t2_min_dp, 1, key="t2_dp",
-                          help="两套房使用相同首付比例")
-    with c6:
+    with c2:
         t2_cap = 80.0
-        if t2_uses_gjj:
-            t2_cap = st.number_input("公积金最高贷款额度（万元）", 0.0, value=80.0, step=1.0, format="%.0f", key="t2_cap")
+        if a_uses_gjj or b_uses_gjj:
+            t2_cap = st.number_input("公积金最高贷款额度（万元）", 0.0, value=80.0, step=1.0, format="%.0f", key="t2_cap",
+                                     help="两套房使用相同公积金上限")
 
-    # 单套房计算
-    def _calc_one(price_wan, is_first):
+    # 单套房计算（贷款方式和首付比例跟随房产，利率跟随首套/二套身份）
+    def _calc_one(price_wan, dp_pct, loan_mode, is_first):
         tp = price_wan * 10000
-        down = tp * t2_dp / 100
+        down = tp * dp_pct / 100
         loan = tp - down
         cap = t2_cap * 10000
         sd_r = 3.0 if is_first else 3.3
 
-        if t2_loan == "纯商业贷款":
+        if loan_mode == "纯商业贷款":
             gjj, sd = 0.0, loan
-        elif t2_loan == "纯公积金贷款":
+        elif loan_mode == "纯公积金贷款":
             gjj, sd = min(loan, cap) if cap > 0 else loan, 0.0
         else:
             gjj = min(loan, cap) if cap > 0 else 0
@@ -414,16 +423,17 @@ with tab2:
             down=down/10000, gjj_loan=gjj/10000, gjj_m=gjj_m, gjj_i=gjj_i/10000,
             sd_loan=sd/10000, sd_m=sd_m, sd_i=sd_i/10000,
             total_m=gjj_m+sd_m, total_i=(gjj_i+sd_i)/10000,
+            loan_mode=loan_mode, dp_pct=dp_pct,
         )
 
     # 方案一：先A（首套）→ B（二套）
-    p1a = _calc_one(price_a, True)
-    p1b = _calc_one(price_b, False)
+    p1a = _calc_one(price_a, dp_a, loan_a, True)
+    p1b = _calc_one(price_b, dp_b, loan_b, False)
     p1_total = p1a["total_i"] + p1b["total_i"]
 
     # 方案二：先B（首套）→ A（二套）
-    p2b = _calc_one(price_b, True)
-    p2a = _calc_one(price_a, False)
+    p2b = _calc_one(price_b, dp_b, loan_b, True)
+    p2a = _calc_one(price_a, dp_a, loan_a, False)
     p2_total = p2b["total_i"] + p2a["total_i"]
 
     # 展示
@@ -433,7 +443,7 @@ with tab2:
 
     with rc1:
         better1 = " 🏆 更优" if p1_total < p2_total else ""
-        st.markdown(f"**方案一：先A({price_a:.0f}万，首套) → 后B({price_b:.0f}万，二套){better1}**")
+        st.markdown(f"**方案一：先A({price_a:.0f}万，{loan_a}，首付{dp_a}%，首套) → 后B({price_b:.0f}万，{loan_b}，首付{dp_b}%，二套){better1}**")
         st.markdown(f"""| | A（首套 3.0%） | B（二套 3.3%） | 合计 |
 |---|---|---|---|
 | 首付（万） | {p1a['down']:.2f} | {p1b['down']:.2f} | {p1a['down']+p1b['down']:.2f} |
@@ -444,7 +454,7 @@ with tab2:
 
     with rc2:
         better2 = " 🏆 更优" if p2_total < p1_total else ""
-        st.markdown(f"**方案二：先B({price_b:.0f}万，首套) → 后A({price_a:.0f}万，二套){better2}**")
+        st.markdown(f"**方案二：先B({price_b:.0f}万，{loan_b}，首付{dp_b}%，首套) → 后A({price_a:.0f}万，{loan_a}，首付{dp_a}%，二套){better2}**")
         st.markdown(f"""| | B（首套 3.0%） | A（二套 3.3%） | 合计 |
 |---|---|---|---|
 | 首付（万） | {p2b['down']:.2f} | {p2a['down']:.2f} | {p2b['down']+p2a['down']:.2f} |
@@ -473,24 +483,25 @@ with tab2:
         )
 
     # 公积金明细
-    if t2_uses_gjj:
+    t2_any_gjj = a_uses_gjj or b_uses_gjj
+    if t2_any_gjj:
         with st.expander("🔍 查看公积金/商贷明细"):
-            for label, first, second in [
-                (f"方案一：先A({price_a:.0f}万)→B({price_b:.0f}万)", p1a, p1b),
-                (f"方案二：先B({price_b:.0f}万)→A({price_a:.0f}万)", p2b, p2a),
+            for label, first, second, first_mode, second_mode in [
+                (f"方案一：先A→B", p1a, p1b, loan_a, loan_b),
+                (f"方案二：先B→A", p2b, p2a, loan_b, loan_a),
             ]:
                 st.caption(f"**{label}**")
                 d1, d2 = st.columns(2)
                 with d1:
                     st.write(
-                        f"首套：公积金 {first['gjj_loan']:.2f}万"
+                        f"首套（{first_mode}）：公积金 {first['gjj_loan']:.2f}万"
                         f"（月供 {first['gjj_m']:,.0f} 利息 {first['gjj_i']:.2f}万）｜ "
                         f"商贷 {first['sd_loan']:.2f}万"
                         f"（月供 {first['sd_m']:,.0f} 利息 {first['sd_i']:.2f}万）"
                     )
                 with d2:
                     st.write(
-                        f"二套：公积金 {second['gjj_loan']:.2f}万"
+                        f"二套（{second_mode}）：公积金 {second['gjj_loan']:.2f}万"
                         f"（月供 {second['gjj_m']:,.0f} 利息 {second['gjj_i']:.2f}万）｜ "
                         f"商贷 {second['sd_loan']:.2f}万"
                         f"（月供 {second['sd_m']:,.0f} 利息 {second['sd_i']:.2f}万）"
