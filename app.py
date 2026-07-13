@@ -8,7 +8,19 @@ from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from openpyxl.utils import get_column_letter
 
 # ── Page config ────────────────────────────────────────────────────────────
-st.set_page_config(page_title="房贷计算器", page_icon="🏠", layout="wide")
+st.set_page_config(
+    page_title="房贷计算器",
+    page_icon="🏠",
+    layout="wide",
+    menu_items={"About": "房贷计算器 — 支持首套/二套、公积金/商贷/组合贷"},
+)
+st.markdown("""<style>
+    /* 移动端触控优化 */
+    @media (max-width: 768px) {
+        .stButton button { min-height: 44px; font-size: 16px; }
+        .stSelectbox div[data-baseweb="select"] { font-size: 16px; }
+    }
+</style>""", unsafe_allow_html=True)
 
 # ── Constants ──────────────────────────────────────────────────────────────
 PRICE_OPTIONS = [50, 80, 100, 120, 150, 180, 200, 220, 250, 280, 300, 350, 400, 450, 500]
@@ -155,12 +167,14 @@ with tab1:
             default=[p for p in PRICE_DEFAULTS if p in PRICE_OPTIONS],
             help="可多选，同时对比不同总价",
         )
-        custom_prices_str = st.text_input(
-            "自定义总价（逗号/空格分隔）",
-            placeholder="例如：175 225 275",
-            help="输入自定义数值，会与上方多选合并",
-        )
-        custom_prices = parse_custom_input(custom_prices_str)
+        with st.expander("📝 自定义总价"):
+            custom_prices_str = st.text_input(
+                "输入数值（逗号/空格/换行分隔）",
+                placeholder="例如：175 225 275",
+                help="会与上方多选结果合并",
+                label_visibility="collapsed",
+            )
+            custom_prices = parse_custom_input(custom_prices_str)
 
     with col2:
         dp_pcts = list(range(min_down_pay, 55, 5))
@@ -172,12 +186,14 @@ with tab1:
             default=default_dp[:3],
             help="可多选，同时对比不同首付比例",
         )
-        custom_dps_str = st.text_input(
-            "自定义首付（逗号/空格分隔）",
-            placeholder="例如：18 22 28",
-            help="输入自定义数值（%），会与上方多选合并",
-        )
-        custom_dps = parse_custom_input(custom_dps_str)
+        with st.expander("📝 自定义首付"):
+            custom_dps_str = st.text_input(
+                "输入数值（逗号/空格/换行分隔）",
+                placeholder="例如：18 22 28",
+                help="会与上方多选结果合并",
+                label_visibility="collapsed",
+            )
+            custom_dps = parse_custom_input(custom_dps_str)
 
     with col3:
         max_gjj_wan = 80.0
